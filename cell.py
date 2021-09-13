@@ -13,13 +13,13 @@ class Cell(metaclass=ABCMeta):
     pass
 
   @abstractmethod
-  def is_satisfied(self) -> bool:
+  def issatisfied(self) -> bool:
     pass
   
-  def has_tip(self) -> bool:
+  def hastip(self) -> bool:
     return isinstance(self, NumberedBlackCell)
 
-  def is_white(self) -> bool:
+  def iswhite(self) -> bool:
     return isinstance(self, WhiteCell)
 
 
@@ -29,9 +29,13 @@ class WhiteCell(Cell):
     super().__init__(i, j)
     
     self.light_level = 0 # quantas lampadas iluminam essa casa
-    self.has_lamp = False # se tem uma lampada aqui
-  
-  def is_satisfied(self) -> bool:
+    self.haslamp = False # se tem uma lampada aqui
+    self.nmblknei_highest:NumberedBlackCell = None # Uma variável
+    # usada pela heuristica que guarda o vizinho numerado adjacente com
+    # maior número. Caso a casa não seja adjacente a nenhum vizinho
+    # numerado, guarda None.
+
+  def issatisfied(self) -> bool:
     return self.light_level > 0
 
   def lightup(self):
@@ -41,12 +45,13 @@ class WhiteCell(Cell):
     self.light_level -= 1
 
   def __str__(self) -> str:
-    if self.has_lamp:
+    if self.haslamp:
       return '*'
-    elif self.light_level > 0:
-      return '+'
+    # elif self.light_level > 0:
+    #   return '+'
     else:
       return '.'
+
 
 class BlackCell(Cell):
   """Representa célula preta"""
@@ -56,30 +61,27 @@ class BlackCell(Cell):
   def __str__(self) -> str:
     return 'x'
 
-  def is_satisfied(self) -> bool:
+  def issatisfied(self) -> bool:
       return True
 
 
 class NumberedBlackCell(BlackCell):
   """Representa célula preta com dica"""
-  def __init__(self, i:int, j:int, tip:int):
+  def __init__(self, i:int, j:int, num:int):
     super().__init__(i, j)
     
-    self.tip = tip # o número da dica.
-    self.adjacent_whitecells:List[WhiteCell] = [] # contém a lista das células
-    #   brancas adjacentes. Como o tamanho é no máximo quatro, eu botei a
-    #   lista dentro da célula.
+    self.num = num # o número da dica.
+    self.whitenei_list:List[WhiteCell] = [] # contém a lista das células
+    #   brancas adjacentes. Usado pelo algoritmo de resolução
+  
+  def add_whitenei(self, cell:WhiteCell):
+    self.whitenei_list.append(cell)
 
-  def add_adjacent_whitecell(self, cell:WhiteCell):
-    self.adjacent_whitecells.append(cell)
+  def issatisfied(self) -> bool:
+    return sum(1 for c in self.whitenei_list if c.haslamp) == self.num
 
-  def is_satisfied(self) -> bool:
-    return sum(1 for lamp in self.adjacent_whitecells if lamp.has_lamp) == \
-      self.tip
-
-  def is_broken(self) -> bool:
-    return sum(1 for lamp in self.adjacent_whitecells if lamp.has_lamp) > \
-      self.tip
+  def isbroken(self) -> bool:
+    return sum(1 for c in self.whitenei_list if c.haslamp) > self.num
 
   def __str__(self) -> str:
-    return str(self.tip)
+    return str(self.num)
