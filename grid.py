@@ -44,20 +44,20 @@ class Grid:
       for di, dj in ((1,0), (0,1), (-1,0), (0,-1)):
         ni, nj = cell.i+di, cell.j+dj
         if 0 <= ni < self.n and 0 <= nj < self.n and \
-        (neig := self.model[ni][nj]).iswhite():
-          cell.add_whitenei(neig)
+        (neig := self.model[ni][nj]).is_white():
+          cell.add_adjacent_whitecell(neig)
 
-  def satisfaz_tudo(self) -> bool:
-    return self.satisfaz_todas_luz() and self.satisfaz_todas_dicas()
+  def satisfies_all_rules(self) -> bool:
+    return self.satisfies_all_whitecells() and self.satisfies_all_tips()
 
-  def satisfaz_todas_luz(self) -> bool:
-    return all(cell.issatisfied() for cell in self.whitecell_list)
+  def satisfies_all_whitecells(self) -> bool:
+    return all(cell.is_satisfied() for cell in self.whitecell_list)
 
-  def satisfaz_todas_dicas(self) -> bool:
-    return all(cell.issatisfied() for cell in self.numblkcell_list)
+  def satisfies_all_tips(self) -> bool:
+    return all(cell.is_satisfied() for cell in self.numblkcell_list)
 
-  def quebra_alguma_dica(self) -> bool:
-    return any(cell.isbroken() for cell in self.numblkcell_list)
+  def break_any_tip(self) -> bool:
+    return any(cell.is_broken() for cell in self.numblkcell_list)
 
   def __str__(self) -> str:
     return '\n'.join(''.join(str(cell) for cell in line)
@@ -67,12 +67,12 @@ class Grid:
     m = self.model
     i, j = pos
     cell:WhiteCell = m[i][j]
-    cell.haslamp = True
+    cell.has_lamp = True
     cell.lightup()
     for di, dj in ((1,0), (0,1), (-1,0), (0,-1)):
       ni, nj = i+di, j+dj
       while 0 <= ni < self.n and 0 <= nj < self.n and \
-            (neig := self.model[ni][nj]).iswhite():
+            (neig := self.model[ni][nj]).is_white():
         neig.lightup()
         ni, nj = ni+di, nj+dj
 
@@ -80,21 +80,21 @@ class Grid:
     m = self.model
     i, j = pos
     cell:WhiteCell = m[i][j]
-    cell.haslamp = False
+    cell.has_lamp = False
     cell.lightdown()
     for di, dj in ((1,0), (0,1), (-1,0), (0,-1)):
       ni, nj = i+di, j+dj
       while 0 <= ni < self.n and 0 <= nj < self.n and \
-            (neig := self.model[ni][nj]).iswhite():
+            (neig := self.model[ni][nj]).is_white():
         neig.lightdown()
         ni, nj = ni+di, nj+dj
 
-  def canplacelamp(self, pos:Tuple[int,int]) -> bool:
+  def can_place_lamp(self, pos:Tuple[int,int]) -> bool:
     i, j = pos
     cell = self.model[i][j]
-    return cell.iswhite() and not cell.issatisfied()
+    return cell.is_white() and not cell.is_satisfied()
 
-  def prox_pos_valida(self, pos:Tuple[int, int]) -> Union[Tuple[int, int], None]:
+  def next_valid_position(self, pos:Tuple[int, int]) -> Union[Tuple[int, int], None]:
     i, j = pos
     
     while True:
@@ -106,7 +106,7 @@ class Grid:
       if not(0 <= i < self.n and 0 <= j < self.n):
         return None
            
-      if self.canplacelamp(newpos := (i, j)):
+      if self.can_place_lamp(newpos := (i, j)):
         return newpos
 
   def solve(self):
@@ -114,9 +114,9 @@ class Grid:
     
     won = False
     
-    if not self.satisfaz_tudo():
+    if not self.satisfies_all_rules():
       pos = (0,-1)
-      while (pos := self.prox_pos_valida(pos)) is not None:
+      while (pos := self.next_valid_position(pos)) is not None:
         if self._recsolver(pos):
           won = True
           break
@@ -129,39 +129,39 @@ class Grid:
       print("impossivel")
 
   def _preprocess(self):
-    istherechange = True
-    while istherechange:
-      istherechange = False
+    is_there_change = True
+    while is_there_change:
+      is_there_change = False
       for numblkcell in self.numblkcell_list:
-        neig_livres = 0
+        neig_empty = 0
         neig_lamps = 0
-        neig_list = numblkcell.whitenei_list
+        neig_list = numblkcell.adjacent_whitecells
         
         for neig in neig_list:
-          if neig.haslamp:
+          if neig.has_lamp:
             neig_lamps += 1
-          elif not neig.issatisfied():
-            neig_livres += 1
+          elif not neig.is_satisfied():
+            neig_empty += 1
         
-        if neig_livres == numblkcell.tip - neig_lamps:
+        if neig_empty == numblkcell.tip - neig_lamps:
           for neig in neig_list:
-            if not neig.issatisfied():
+            if not neig.is_satisfied():
               self.add_lamp((neig.i, neig.j))
-              istherechange = True
+              is_there_change = True
 
   def _recsolver(self, pos:Tuple[int, int]) -> bool:
     self.add_lamp(pos)
-    hintOK = not self.quebra_alguma_dica()
-    if not hintOK:
+    tip_ok = not self.break_any_tip()
+    if not tip_ok:
       self.remove_lamp(pos)
       return False
     else:
-      won = self.satisfaz_tudo()
+      won = self.satisfies_all_rules()
       if won:
         return True
       else:
         next_pos = pos
-        while (next_pos := self.prox_pos_valida(next_pos)) is not None:
+        while (next_pos := self.next_valid_position(next_pos)) is not None:
           if self._recsolver(next_pos):
             return True
         self.remove_lamp(pos)
